@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <style>
+      body{
+        background-color: black;
+      }
+    </style>
+</head>
+<body>
+
+  <svg height="310" width="310">
+    <defs>
+      <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="4" height="4">
+        <rect width="5" height="5" style="fill:rgba(0,0,0,0.2);" />
+        <path d="M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2" style="stroke:rgba(0,0,0,0.4); stroke-width:1" />
+      </pattern>
+
+      <clipPath id="winter">
+        <ellipse cx="155" cy="155" rx="150" ry="8.35" id="winterNightEllipse"/>
+        <path d="M5,155 a1,1 0 0,0 300,0" />
+      </clipPath>
+
+      <mask id="summer">
+        <circle cx="155" cy="155" r="150" width="300" height="300" fill="white" ></circle>
+        <ellipse cx="155" cy="155" rx="150" ry="8.35" fill="black" id="summerNightEllipse"></ellipse>
+        <path d="M5,155 a1,1 0 0,1 300,0" fill="black"></path>
+      </mask>
+    </defs>
+    
+    <image width="300" height="300" x="5" y="5" xlink:href="./earth3.png" id="cartoonEarth" transform="rotate(0)"/>
+
+    <g fill="rgba(255,255,255,0.0)" stroke-width="2" id="locationPins"></g>
+    
+    <rect width="300" height="300" x="5" y="5" fill="url(#diagonalHatch)" clip-path="url(#winter)" id="winterNight" />
+    <rect width="300" height="300" x="5" y="5" fill="url(#diagonalHatch)" mask="url(#summer)" id="summerNight" />
+
+    <g id="hourMarkers">
+      <g id="interval-l">
+        <g id="interval-m">
+          <path d="M0,155 l10,-2 0,4 Z" fill="white"></path>
+          <circle cx="12" cy="155" r="3" fill="white"></circle>
+          <line x1="5" x2="305" y1="155" y2="155" stroke-width="1" stroke="rgba(255,255,255,0.1"></line>
+          <circle cx="298" cy="155" r="3" fill="white"></circle>
+          <path d="M310,155 l-10,-2 0,4 Z" fill="white"></path>
+        </g>
+        <g id="interval-s" transform="rotate(15 155 155)">
+          <path d="M5,155 l-4,-4 0,8 Z" fill="rgba(255,255,255,0.4)"></path>
+          <path d="M305,155 l4,-4 0,8 Z" fill="rgba(255,255,255,0.4)"></path>
+        </g>
+        <g id="interval-s" transform="rotate(30 155 155)">
+          <path d="M5,155 l-4,-4 0,8 Z" fill="rgba(255,255,255,0.4)"></path>
+          <path d="M305,155 l4,-4 0,8 Z" fill="rgba(255,255,255,0.4)"></path>
+        </g>
+      </g>'
+      <g transform="rotate(45 155 155)">
+          <use xlink:href='#interval-l'/>
+      </g>
+      <g transform="rotate(90 155 155)">
+          <use xlink:href='#interval-l'/>
+      </g>
+      <g transform="rotate(135 155 155)">
+          <use xlink:href='#interval-l'/>
+      </g>
+    </g>
+  
+  </svg>
+
+  <br/>
+  <button onClick="spinTick()" 
+    style="background-color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.5);
+    padding: 6px 15px;
+    border: none;
+    border-radius: 6px;"
+    >tick</button>
+
+<script type="text/javascript">
+
+const earthRadius = 150;
+let earthRot = -90;
+let timer = null;
+let J2000 = 946728000000; //UTC time of 2000-01-01 12:00:00 GMT+00:00
+const toRad = (180 / Math.PI);
+const siderealDay = 23.9344696;
+const millisecondsInADay = 24*60*60*1000;
+let svgns = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+svgns = 'http://www.w3.org/2000/svg';
+let cities = {
+  seattle:{
+    lat: 47.6062,
+    long: -122.3321,
+    color: 'orange',
+  },
+  madrid:{
+    lat:40.4168,
+    long: -3.7038,
+    color: 'yellow'
+  },
+  dubai:{
+    lat: 25.2048,
+    long: 55.2708,
+    color: 'red',
+  }
+};
+const planets = {
+  /*
+  a: semi-major axis
+  e: eccentricity
+  i: inclination
+  O: longitude of ascending node
+  p: longitude of perihelion
+  L: mean longitude
+  n: mean daily motion
+  */
+  Mercury:{
+    a: 0.38709893,
+    e: 0.20563069,
+    i: 7.00487,
+    O: 48.33167,
+    p: 77.45645,
+    L: 252.25084,
+    n: 4.092353,
+  },
+  Venus:{
+    a: 0.72333199,
+    e: 0.00677323,
+    i: 3.39471,
+    O: 76.68069,
+    p: 131.53298,
+    L: 181.97973,
+    n: 1.602158,
+  },
+  Earth:{
+    a: 1.00000011,
+    e: 0.01671022,
+    i: 0.00005,
+    O: -11.26064,
+    p: 102.94719,
+    L: 100.46435,
+    n: 0.9855796,
+  },
+  Mars:{
+    a: 1.52366231,
+    e: 0.09341233,
+    i: 1.85061,
+    O: 49.57854,
+    p: 336.04084,
+    L: 355.45332,
+    n: 0.5240613,
+  },
+  Jupiter:{
+    a: 5.20336301,
+    e: 0.04839266,
+    i: 1.30530,
+    O: 100.55615,
+    p: 14.75385,
+    L: 34.40438,
+    n: 0.008309618,
+  },
+  Saturn:{
+    a: 9.53707032,
+    e: 0.05415060,
+    i: 2.48446,
+    e: 113.71504,
+    O: 92.43194,
+    p: 49.94432,
+    n: 0.03328656,
+  },
+}
+
+function changeNightShape(day){
+  var start = new Date(day.getFullYear(), 0, 0);
+  var diff = day - start;
+  var day = Math.floor(diff / millisecondsInADay);
+  console.log('day of year', day);
+  //day 1 is Vernal Equinox
+  var ellipseHeight = .235 * -Math.sin( (day-79) * (Math.PI/180) );
+  console.log('ellipseHeight', ellipseHeight);
+  if(ellipseHeight >= 0){
+    $('#winterNightEllipse').attr('ry', earthRadius* ellipseHeight);
+    $('#winterNight').show();
+    $('#summerNight').hide();
+  }else{
+    $('#summerNightEllipse').attr('ry', earthRadius* Math.abs(ellipseHeight));
+    $('#summerNight').show();
+    $('#winterNight').hide();
+  }
+}
+
+function startSpin(){
+  if(timer != null) return;
+  timer = setInterval(spinTick, 91720); 
+  //number of miliseconds to move one pixel
+}
+function stopSpin(){
+  clearInterval(timer);
+  timer = null;
+}
+function spinTick(){
+  earthRot = mod((earthRot - 0.3822), 360);
+  spin();
+}
+function spin(){
+  var sRot = `rotate(${earthRot} 155 155)`;
+  console.log(sRot);
+  
+  $('#cartoonEarth').attr('transform', sRot);
+  $('#locationPins').attr('transform', sRot);
+}
+function setSpin(day, earthAnomoly){
+  var partialDayHrs = mod( (day.getTime() - J2000)/(1000*60*60), 24);
+  console.log('partial day', partialDayHrs);
+  earthRot =  -270 - earthAnomoly;
+  earthRot = mod(earthRot, 360);
+  $('#hourMarkers').attr('transform', `rotate(${earthRot} 155 155)`);
+  earthRot -= (partialDayHrs*15)
+  spin();
+}
+
+
+function movePin(location){
+  const theta = (90-location.long) * Math.PI / 180;
+  const radius = 150 * (1 - (location.lat/90));
+  const x = 155+ radius * Math.cos(theta);
+  const y = 155+ radius * Math.sin(theta);
+  $('#locationPin').attr('cx', x).attr('cy', y);
+}
+function moveShadow(anomolyAngle){
+  var sRot = `rotate(${-90-anomolyAngle} 155 155)`;
+  $('#summerNight').attr('transform', sRot);
+  $('#winterNight').attr('transform', sRot);
+  return;
+  
+  const rotation = `rotate(${-90-anomolyAngle}deg)`
+  const css = {
+    "-webkit-transform" : rotation,
+    "transform" : rotation,
+    "-webkit-transform-origin" : "50% 50%",
+    "transform-origin" : "50% 50%"
+  }
+  $('#summerNight').css(css);
+  $('#winterNight').css(css);
+}
+
+
+function mod(n, m) {
+  return ((n % m) + m) % m;
+}
+function sin(n){
+  return Math.sin(n*toRad);
+}
+function cos(n){
+  return Math.cos(n*toRad);
+}
+
+//const siderealDay = 24 * 60 * 60;
+function findHeliocentricAnomoly(body, day){
+  var dayDiff = ( day.getTime() - J2000 ) / millisecondsInADay;
+
+  var meanAnomoly = mod( (body.n * dayDiff + body.L - body.p), 360);
+  //console.log('mean anomoly', meanAnomoly);
+
+  var trueAnomoly = meanAnomoly + toRad * (
+    ((2 * body.e - Math.pow(body.e, 3)/4) * sin(meanAnomoly)) +
+    (5/4 * Math.pow(body.e, 2) * sin(2*meanAnomoly)) +
+    (13/12 * Math.pow(body.e, 3) * sin(3*meanAnomoly))
+  );
+  //console.log('true anomoly', trueAnomoly);
+  return trueAnomoly;
+}
+
+function findCoord(body, day){
+  var trueAnomoly = findHeliocentricAnomoly(body, day);
+
+  var radius = Earth.a * ( 1 - Math.pow(Earth.e, 2) ) / ( 1 + Earth.e * cos(trueAnomoly) );
+  console.log('radius', radius); 
+
+  var vpo = trueAnomoly + Earth.p - Earth.O;
+  var X = radius * ( cos(Earth.O) * cos(vpo) - sin(Earth.O) * sin(vpo) * cos(Earth.i) );
+  var Y = radius * ( sin(Earth.O) * cos(vpo) + cos(Earth.O) * sin(vpo) * cos(Earth.i) );
+  var Z = radius * ( sin(vpo) * sin(Earth.i) );
+  console.log('X', X);
+  console.log('Y', Y);
+  console.log('Z', Z); 
+  return{
+    x:X,
+    y:Y,
+    z:Z,
+  };
+}
+
+function drawLocations(){
+  if(localStorage.getItem('locations') !== null){
+    cities = JSON.parse(localStorage.getItem('locations'));
+  }else{
+    navigator.geolocation.getCurrentPosition( pos => {
+      cities['local'] = {
+        lat: pos.coords.latitude,
+        long: pos.coords.longitude,
+        color: 'magenta',
+      }
+      console.log(cities);
+      localStorage.setItem('locations', JSON.stringify(cities));
+    });
+  }
+
+  var group = document.getElementById('locationPins');
+  for(var key in cities){
+    const theta = (90-cities[key].long) * Math.PI / 180;
+    const radius = 150 * (1 - (cities[key].lat/90));
+    const x = 155+ radius * Math.cos(theta);
+    const y = 155+ radius * Math.sin(theta);
+    group.appendChild(makeSVGEl("circle", {
+      cx: x,
+      cy: y,
+      stroke: cities[key].color,
+      r: 4,
+    }));
+  }
+}
+function makeSVGEl(tag, attrs) {
+    var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (var k in attrs) {
+      el.setAttribute(k, attrs[k]);
+    }
+    return el;
+}
+
+// OnLoad:
+var dateNow = new Date();
+//console.log(dateNow.getHours(), dateNow.getMinutes());
+//dateNow = new Date('5 5, 2000 12:00:0000 GMT+00:00'); //J2000
+//dateNow.setHours(12,0,0,0);
+console.log('J2000', dateNow, (dateNow.getTime()-J2000)/millisecondsInADay);
+//dateNow = new Date(2000, 2, 20); //vernal equinox
+var trueAnomoly = findHeliocentricAnomoly(planets.Earth, dateNow);
+moveShadow(trueAnomoly);
+changeNightShape(dateNow);
+drawLocations();
+setSpin(dateNow, trueAnomoly);
+startSpin();
+
+
+
+</script>
+</body>
+</html>
