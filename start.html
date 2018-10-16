@@ -2,15 +2,16 @@
 <html>
 <head>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <style>
       body{
         background-color: black;
       }
     </style>
 </head>
-<body>
+<body id="root">
 
-  <svg height="310" width="310">
+  <svg height="800" width="800">
     <defs>
       <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="4" height="4">
         <rect width="5" height="5" style="fill:rgba(0,0,0,0.2);" />
@@ -344,6 +345,21 @@ startSpin();
 
 
 
+</script>
+
+<script type="text/javascript">
+  var app = new Vue({
+    el: '#root',
+    data(){
+      return {
+        exactDay: new Date(),
+        quarterDay: null,
+        J2000: 946728000000, //UTC time of 2000-01-01 12:00:00 GMT+00:00
+        earthAnomoly: null,
+
+      }
+    }
+  });
 </script>
 </body>
 </html>
