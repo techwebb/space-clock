@@ -5,6 +5,8 @@
   <style>
     body{
       background-color: black;
+      margin:0;
+      padding:0;
     }
     .btn{
       background-color: rgba(255,255,255,0.2);
@@ -17,6 +19,31 @@
 </head>
 <body>
   <div id="root">
+
+  <button class="btn" @click="toggleInformation" style="position:fixed;">
+    information
+  </button>
+  <div v-if="informationIsVisible" style="position:fixed; top:37px; background-color:rgba(0,0,0,0.85); padding:20px 50px; color:grey"> 
+    <h3>General Information</h3>
+    <p><strong>Basiclly this is a clock. It's real time, and slow moving.</strong> Would work great as a background, new tab, maybe a device face.</p>
+    <p><strong>Has geolocation</strong>: you should have a magenta dot for where you are at, more on that later.</p>
+    <p><strong>It tells the time of the day.</strong> Your dot, like your location, will experience sunrise and sunset, as it moves through the day.</p>
+    <p><strong>Tells the day of the year.</strong> On January first the sun is directly to the left of the screen, and moves around the 'sun' counterclockwise.</p>
+    <p>Find the triangle that represents dawn at the equator (moving from dark to light). The Earth spins while moving in that direction.</p>
+    <p><strong>The shadow changes shape</strong>, in the winter the Earth moves a bit north making more hours there night. The shape of that shadow should be pretty accurate, depending of if I got the right projection.</p>
+    <p>There isn't a direct day/night switch, but thought drawing a twilight region would add complexity and still be a guess. However, the size of your location dot is about how much of the sky you can see (ish). When your dot reaches a boundary, daylight will change, when the dot finishes the transition, the daylight will too.</p>
+    <dl>
+      <dt>Next up:</dt>
+      <dd>Moon Location with shadow</dd>
+      <dd>Nearby planets (the ones visible to the naked eye)</dd>
+      <dd>Zodiac constellations</dd>
+      <dd>Adding multiple locations that you want to track through the day.</dd>
+      <dt>What about <em>xyz</em> Timezone or <em>Daylight savings</em></dt>
+      <dd>The app's official position is that timezones are dumb, and daylight savings is even more dumb. The 'clock markings' represet sun-time, not Earth time. You can find the zenith of the sun, but that may not be noon where you are. That is not the purpose of this clock.</dd>
+      <dt>disclaimers:</dt>
+      <dd>None of this is to scale. Yes, my math could be better, objects could be up to 1/5 degree off (depending on day of year), but these shouldn't get too bad until about 2050.</dd>
+    </dl>
+  </div>
 
   <svg height="800" width="800" :view-box.camel="viewBoxString">
     <defs>
@@ -199,7 +226,8 @@ const planets = {
         earthRadiusPx: 150,
         locations: {},
         timer: undefined,
-        viewBoxString: '190 190 450 450',
+        viewBoxString: '0 0 800 800',
+        informationIsVisible: false,
       }
     },
     mounted(){
@@ -290,6 +318,9 @@ const planets = {
       pinLoop(location){
         return 200 * (1 - (location.lat/90));
       },
+      toggleInformation(){
+        this.informationIsVisible = !this.informationIsVisible;
+      }
     }
   });
 
