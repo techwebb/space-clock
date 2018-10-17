@@ -9,41 +9,90 @@
       padding:0;
     }
     .btn{
-      background-color: rgba(255,255,255,0.2);
-      color: rgba(255,255,255,0.5);
+      background-color: #222;
+      color: #777;
       padding: 6px 15px;
       border: none;
       border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+    }
+    input{
+      background-color: #333;
+      color: grey;
+      border: thin solid #222;
     }
   </style>
 </head>
 <body>
   <div id="root">
 
-  <button class="btn" @click="toggleInformation" style="position:fixed;">
-    information
-  </button>
-  <div v-if="informationIsVisible" style="position:fixed; top:37px; background-color:rgba(0,0,0,0.85); padding:20px 50px; color:grey"> 
-    <h3>General Information</h3>
-    <p><strong>Basiclly this is a clock. It's real time, and slow moving.</strong> Would work great as a background, new tab, maybe a device face.</p>
-    <p><strong>Has geolocation</strong>: you should have a magenta dot for where you are at, more on that later.</p>
-    <p><strong>It tells the time of the day.</strong> Your dot, like your location, will experience sunrise and sunset, as it moves through the day.</p>
-    <p><strong>Tells the day of the year.</strong> On January first the sun is directly to the left of the screen, and moves around the 'sun' counterclockwise.</p>
-    <p>Find the triangle that represents dawn at the equator (moving from dark to light). The Earth spins while moving in that direction.</p>
-    <p><strong>The shadow changes shape</strong>, in the winter the Earth moves a bit north making more hours there night. The shape of that shadow should be pretty accurate, depending of if I got the right projection.</p>
-    <p>There isn't a direct day/night switch, but thought drawing a twilight region would add complexity and still be a guess. However, the size of your location dot is about how much of the sky you can see (ish). When your dot reaches a boundary, daylight will change, when the dot finishes the transition, the daylight will too.</p>
-    <dl>
-      <dt>Next up:</dt>
-      <dd>Moon Location with shadow</dd>
-      <dd>Nearby planets (the ones visible to the naked eye)</dd>
-      <dd>Zodiac constellations</dd>
-      <dd>Adding multiple locations that you want to track through the day.</dd>
-      <dt>What about <em>xyz</em> Timezone or <em>Daylight savings</em></dt>
-      <dd>The app's official position is that timezones are dumb, and daylight savings is even more dumb. The 'clock markings' represet sun-time, not Earth time. You can find the zenith of the sun, but that may not be noon where you are. That is not the purpose of this clock.</dd>
-      <dt>disclaimers:</dt>
-      <dd>None of this is to scale. Yes, my math could be better, objects could be up to 1/5 degree off (depending on day of year), but these shouldn't get too bad until about 2050.</dd>
-    </dl>
+    <div style="position:fixed">
+      <button class="btn" @click="toggleInformation">
+          information
+        </button>
+        <button class="btn" @click="toggleSettings">
+          Settings
+      </button>
+      <div v-if="informationIsVisible" style="background-color:rgba(0,0,0,0.85); padding:20px 50px; color:grey"> 
+        <h3>General Information</h3>
+        <p><strong>Basiclly this is a clock. It's real time, and slow moving.</strong> Would work great as a background, new tab, maybe a device face.</p>
+        <p><strong>Has geolocation</strong>: you should have a magenta dot for where you are at, more on that later.</p>
+        <p><strong>It tells the time of the day.</strong> Your dot, like your location, will experience sunrise and sunset, as it moves through the day.</p>
+        <p><strong>Tells the day of the year.</strong> On January first the sun is directly to the left of the screen, and moves around the 'sun' counterclockwise.</p>
+        <p>Find the triangle that represents dawn at the equator (moving from dark to light). The Earth spins while moving in that direction.</p>
+        <p><strong>The shadow changes shape</strong>, in the winter the Earth moves a bit north making more hours there night. The shape of that shadow should be pretty accurate, depending of if I got the right projection.</p>
+        <p>There isn't a direct day/night switch, but thought drawing a twilight region would add complexity and still be a guess. However, the size of your location dot is about how much of the sky you can see (ish). When your dot reaches a boundary, daylight will change, when the dot finishes the transition, the daylight will too.</p>
+        <dl>
+          <dt>Next up:</dt>
+          <dd>Moon Location with shadow</dd>
+          <dd>Nearby planets (the ones visible to the naked eye)</dd>
+          <dd>Zodiac constellations</dd>
+          <dd>Adding multiple locations that you want to track through the day.</dd>
+          <dt>What about <em>xyz</em> Timezone or <em>Daylight savings</em></dt>
+          <dd>The app's official position is that timezones are dumb, and daylight savings is even more dumb. The 'clock markings' represet sun-time, not Earth time. You can find the zenith of the sun, but that may not be noon where you are. That is not the purpose of this clock.</dd>
+          <dt>disclaimers:</dt>
+          <dd>None of this is to scale. Yes, my math could be better, objects could be up to 1/5 degree off (depending on day of year), but these shouldn't get too bad until about 2050.</dd>
+        </dl>
+      </div>
+      <div v-if="settingsIsVisible" style="background-color:rgba(0,0,0,0.85); padding: 20px 50px; color:grey;">
+        <div>
+          <label>
+            <input type="checkbox" v-model="settings.clockToggle">
+            <span>Show clock markings</span>
+          </label>
+        </div>
+        <div>
+          <label>
+            <input type="checkbox" v-model="settings.pinPathToggle">
+            <span>Show pin path</span>
+          </label>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(5, 100px);">
+            <div v-for="(location,key) in locations" :key="key"
+              style="display: contents">
+              <span>{{key}}</span>
+              <input v-model="location.lat" />
+              <input v-model="location.long" />
+              <input v-model="location.color" />
+              <span>
+                <button class="btn" @click="deleteLocation(key)">&cross;</button>
+              </span>
+            </div>
+            <div style="display:contents">
+              <input placeholder="name" v-model="newLocation.name" />
+              <input placeholder="coordinates from google" v-model="newLocation.coord" style="grid-column:2/4"/>
+              <input placeholder="color" v-model="newLocation.color" />
+              <span>
+                  <button class="btn" @click="addLocation">Add</button>
+              </span>
+            </div>
+        </div>
+      </div>
+      
   </div>
+  
+  
 
   <svg height="800" width="800" :view-box.camel="viewBoxString">
     <defs>
@@ -75,7 +124,9 @@
           :cx="latLongToX(location)"
           :cy="latLongToY(location)"
           r="4" stroke-width="2"></circle>
-        <circle  cx="400" cy="400" :r="pinLoop(location)" stroke-width="1" stroke-opacity="0.8" stroke-dasharray="5,5"></circle>
+        <circle  cx="400" cy="400"  stroke-width="1" stroke-opacity="0.8" stroke-dasharray="5,5"
+          :r="pinLoop(location)"
+          v-show="settings.pinPathToggle"></circle>
       </g>
     </g>
   
@@ -92,7 +143,7 @@
         id="summerNight" />
     </g>
 
-    <g id="hourMarkers" :transform="dayBasedRotation">
+    <g id="hourMarkers" :transform="dayBasedRotation" v-show="settings.clockToggle">
       <g id="interval-l" >
         <g id="interval-m">
           <path d="M190,400 l10,-2 0,4 Z" fill="rgba(255,255,255,0.5)"></path>
@@ -226,8 +277,18 @@ const planets = {
         earthRadiusPx: 150,
         locations: {},
         timer: undefined,
-        viewBoxString: '180 180 450 450',
+        viewBoxString: '150 150 500 500',
         informationIsVisible: false,
+        settingsIsVisible: false,
+        settings:{
+          clockToggle: true,
+          pinPathToggle: false,
+        },
+        newLocation:{
+          name: '',
+          coord: '',
+          color: '',
+        }
       }
     },
     mounted(){
@@ -320,6 +381,33 @@ const planets = {
       },
       toggleInformation(){
         this.informationIsVisible = !this.informationIsVisible;
+      },
+      toggleSettings(){
+        this.settingsIsVisible = !this.settingsIsVisible;
+        localStorage.setItem('cities', JSON.stringify(this.locations));
+      },
+      addLocation(){
+        let coordPeices = this.newLocation.coord.match(/([0-9.]*)° ([NS]), ([0-9.]*)° ([EW])/);
+        if(coordPeices != null){
+          console.log(coordPeices);
+          this.$set(this.locations, this.newLocation.name || 'pin', {
+            lat: +coordPeices[1] * (coordPeices[2]=='N' ? +1 : -1),
+            long: +coordPeices[3] * (coordPeices[4]=='E' ? +1 : -1),
+            color: this.newLocation.color || 'red',
+          });
+        }else{
+          this.$set(this.locations, this.newLocation.name || 'pin', {
+            lat: 0,
+            long: 0,
+            color: this.newLocation.color || 'red',
+          });
+        }
+        localStorage.setItem('cities', JSON.stringify(this.locations));
+        this.newLocation = {name: '',coord: '',color: ''};
+      },
+      deleteLocation(key){
+        this.$delete(this.locations, key);
+        localStorage.setItem('cities', JSON.stringify(this.locations));
       }
     }
   });
