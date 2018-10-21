@@ -35,7 +35,7 @@
         <button class="btn" @click="toggleSettings">
           Settings
       </button>
-      <div v-if="informationIsVisible" style="background-color:rgba(0,0,0,0.85); padding:20px 50px; color:grey"> 
+      <div v-if="extraIsVisible == 'information'" style="background-color:rgba(0,0,0,0.85); padding:20px 50px; color:grey"> 
         <h3>General Information</h3>
         <p><strong>Basiclly this is a clock. It's real time, and slow moving.</strong> Would work great as a background, new tab, maybe a device face.</p>
         <p><strong>Has geolocation</strong>: you should have a magenta dot for where you are at, more on that later.</p>
@@ -45,18 +45,24 @@
         <p><strong>The shadow changes shape</strong>, in the winter the Earth moves a bit north making more hours there night. The shape of that shadow should be pretty accurate, depending of if I got the right projection.</p>
         <p>There isn't a direct day/night switch, but thought drawing a twilight region would add complexity and still be a guess. However, the size of your location dot is about how much of the sky you can see (ish). When your dot reaches a boundary, daylight will change, when the dot finishes the transition, the daylight will too.</p>
         <dl>
+          <dt>These planets are the ones you can see without a telesscope:</dt>
+          <dd>☿ Mercury</dd>
+          <dd>♀ Venus</dd>
+          <dd>♂ Mars</dd>
+          <dd>♃ Jupiter</dd>
+          <dd>♄ Saturn</dd>
+        </dl>
+        <dl>
           <dt>Next up:</dt>
-          <dd>Moon Location with shadow</dd>
-          <dd>Nearby planets (the ones visible to the naked eye)</dd>
           <dd>Zodiac constellations</dd>
-          <dd>Adding multiple locations that you want to track through the day.</dd>
           <dt>What about <em>xyz</em> Timezone or <em>Daylight savings</em></dt>
           <dd>The app's official position is that timezones are dumb, and daylight savings is even more dumb. The 'clock markings' represet sun-time, not Earth time. You can find the zenith of the sun, but that may not be noon where you are. That is not the purpose of this clock.</dd>
-          <dt>disclaimers:</dt>
-          <dd>None of this is to scale. Yes, my math could be better, objects could be up to 1/5 degree off (depending on day of year), but these shouldn't get too bad until about 2050.</dd>
+          <dt>Disclaimers:</dt>
+          <dd>None of this is to scale.</dd>
+          <dd>Yes, my math could be better, objects could be up a degree or two off (depending on day of year), but these erros should be small until beyond 2050.</dd>
         </dl>
       </div>
-      <div v-if="settingsIsVisible" style="background-color:rgba(0,0,0,0.85); padding: 20px 50px; color:grey;">
+      <div v-if="extraIsVisible == 'settings'" style="background-color:rgba(0,0,0,0.85); padding: 20px 50px; color:grey;">
         <div>
           <label>
             <input type="checkbox" v-model="settings.moonToggle">
@@ -75,6 +81,12 @@
             <span>Show pin path</span>
           </label>
         </div>
+        <div>
+            <label>
+              <input type="checkbox" v-model="settings.planetToggle">
+              <span>Show planets</span>
+            </label>
+          </div>
         <div style="display: grid; grid-template-columns: repeat(5, 100px);">
             <div v-for="(location,key) in locations" :key="key"
               style="display: contents">
@@ -101,7 +113,7 @@
   
   
 
-  <svg height="800" width="800" :view-box.camel="viewBoxString">
+  <svg height="800" width="100%" :view-box.camel="viewBoxString">
     <defs>
       <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="4" height="4">
         <rect width="5" height="5" style="fill:rgba(0,0,0,0.2);" />
@@ -180,18 +192,27 @@
     </g>
 
     <g v-show="settings.moonToggle">
-    <circle id="moon" 
-      cx="0" cy="0" r="55" 
-      fill="#777" 
-      :transform="moonScreenPos"></circle>
-    <path id="moonShadow" 
-      d="M-55,0 a1,1 0 0,0 110,0" 
-      fill="url(#diagonalHatch)"
-      :transform="moonShadowScreenPos"></path>
-    <path d="M0,-55 L0,55" 
-      stroke-width="2" stroke="black" stroke-opacity="0.8" stroke-dasharray="6,4"
-      :transform="moonVisibleLineScreenPos"></path>
+      <circle id="moon" 
+        cx="0" cy="0" r="55" 
+        fill="#777" 
+        :transform="moonScreenPos"></circle>
+      <path id="moonShadow" 
+        d="M-55,0 a1,1 0 0,0 110,0" 
+        fill="url(#diagonalHatch)"
+        :transform="moonShadowScreenPos"></path>
+      <path d="M0,-55 L0,55" 
+        stroke-width="2" stroke="black" stroke-opacity="0.8" stroke-dasharray="6,4"
+        :transform="moonVisibleLineScreenPos"></path>
     </g>
+
+    <g v-show="settings.planetToggle">
+      <g v-for="(planet,name) in planets" :key="name"
+        :transform="planetScreenPos(name)">
+        <circle cx="0" cy="0" r="10" stroke-width="1" stroke-dasharray="2,2" stroke="white" fill="none"></circle>
+        <text x="-5" y="5" fill="white">{{planet.char}}</text>
+      </g>
+    </g>
+    
 
 
   </svg>
@@ -216,12 +237,12 @@
         earthRadiusPx: 200,
         locations: {},
         timer: undefined,
-        informationIsVisible: false,
-        settingsIsVisible: false,
+        extraIsVisible: '',
         settings:{
           clockToggle: true,
           pinPathToggle: false,
           moonToggle: true,
+          planetToggle: true,
         },
         newLocation:{
           name: '',
@@ -266,7 +287,6 @@
       },
       shadowEllipseHeight(){
         var dayOfYear = this.stableQuarterDay - this.findQuarterDay(new Date(this.exactDay.getFullYear(), 0, 0));
-        console.log('season thing', -cos( this.solarEarth.ra ));
         return this.earthRadiusPx * 0.235 * -sin( this.solarEarth.ra );
       },
       geoCentricMoon(){
@@ -284,7 +304,20 @@
       moonVisibleLineScreenPos(){
         return `translate(${this.geoCentricMoon.screenX}, ${this.geoCentricMoon.screenY}), rotate(${(360-this.geoCentricMoon.ra)})`;
       },
+      planets(){
+        let obj = {};
+        for(i in planets){
+          let solarPos = sunBasedPosition(planets[i], this.stableQuarterDay);
+          obj[i] = earthBasedPosition(solarPos, this.solarEarth);
+          obj[i].screenX = 400 + 390 * cos(-obj[i].ra);
+          obj[i].screenY = 400 + 390 * sin(-obj[i].ra);
+        }
+        return obj;
+      },
       viewBoxString(){
+        if(this.settings.planetToggle){
+          return '0 0 800 800';
+        }
         if(this.settings.moonToggle){
           let x = (Math.min(200, this.geoCentricMoon.screenX-55) + Math.max(600, this.geoCentricMoon.screenX+55))/2 - 300;
           let y = (Math.min(200, this.geoCentricMoon.screenY-55) + Math.max(600, this.geoCentricMoon.screenY+55))/2 - 300;
@@ -296,6 +329,9 @@
     methods:{
       findQuarterDay(d){
         return +((Math.round(d.getTime() / msPerDay * 4)/4).toFixed(2)) - J2000dy;
+      },
+      planetScreenPos(p){
+        return `translate(${this.planets[p].screenX || 0}, ${this.planets[p].screenY || 0})`;
       },
       latLongToX(location){
         let theta = (90-location.long) * Math.PI / 180;
@@ -322,10 +358,12 @@
         return 192 * (1 - (location.lat/90));
       },
       toggleInformation(){
-        this.informationIsVisible = !this.informationIsVisible;
+        if(this.extraIsVisible !== 'information') this.extraIsVisible = 'information';
+        else this.extraIsVisible = '';
       },
       toggleSettings(){
-        this.settingsIsVisible = !this.settingsIsVisible;
+        if(this.extraIsVisible !== 'settings') this.extraIsVisible = 'settings';
+        else this.extraIsVisible = '';
         localStorage.setItem('clock_cities', JSON.stringify(this.locations));
         localStorage.setItem('clock_settings', JSON.stringify(this.settings));
       },

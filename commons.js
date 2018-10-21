@@ -24,6 +24,7 @@ const planets = {
     perihelionLong: 77.456, // Π perihelionArg + ascNodeLong
     longPerDay: 4.092317, //n
     eccArg: 0.37073,
+    char: '☿',
   },
   venus: {
     semiMajorAxis: 0.72333, 
@@ -35,6 +36,7 @@ const planets = {
     perihelionLong: 131.564,
     longPerDay: 1.602136,
     eccArg: 0.72330,
+    char: '♀',
   },
   mars: {
     semiMajorAxis: 1.52368, 
@@ -46,6 +48,7 @@ const planets = {
     perihelionLong: 336.060,
     longPerDay: 0.524039,
     eccArg: 1.51039,
+    char: '♂'
   },
   jupiter: {
     semiMajorAxis: 5.20260, 
@@ -57,6 +60,7 @@ const planets = {
     perihelionLong: 14.331,
     longPerDay: 0.083056,
     eccArg: 5.19037,
+    char: '♃'
   },
   saturn: {
     semiMajorAxis: 9.55491, 
@@ -68,6 +72,7 @@ const planets = {
     perihelionLong: 93.057,
     longPerDay: 0.033371,
     eccArg: 9.52547,
+    char: '♄'
   },
 };
 
@@ -115,6 +120,7 @@ function sunBasedPosition(body, day){
     x: distanceSun * (cos(body.ascNodeLong)*cos(w_v) - sin(body.ascNodeLong)*cos(body.inc)*sin(w_v)),
     y: distanceSun * (sin(body.ascNodeLong)*cos(w_v) + cos(body.ascNodeLong)*cos(body.inc)*sin(w_v)),
     z: distanceSun * sin(body.inc) * sin(w_v),
+    char: body.char,
   };
 }
 function earthBasedPosition(body, earth, obliquity=23.4397){
@@ -127,7 +133,8 @@ function earthBasedPosition(body, earth, obliquity=23.4397){
   return {
     ra: atan2(sin(long)*cos(obliquity) - tan(lat)*sin(obliquity), cos(long)),
     dec: asin(sin(lat)*cos(obliquity) + cos(lat)*sin(obliquity)*sin(long)),
-    dist: dist
+    dist: dist,
+    char: body.char,
   };
 }
 
