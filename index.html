@@ -19,10 +19,11 @@
     }
     input{
       background-color: #333;
-      color: grey;
+      color: #aaa;
       border: thin solid #222;
     }
   </style>
+  <script src="./commons.js"></script>
 </head>
 <body>
   <div id="root">
@@ -56,6 +57,12 @@
         </dl>
       </div>
       <div v-if="settingsIsVisible" style="background-color:rgba(0,0,0,0.85); padding: 20px 50px; color:grey;">
+        <div>
+          <label>
+            <input type="checkbox" v-model="settings.moonToggle">
+            <span>Show moon</span>
+          </label>
+        </div>
         <div>
           <label>
             <input type="checkbox" v-model="settings.clockToggle">
@@ -102,7 +109,7 @@
       </pattern>
 
       <clipPath id="winter">
-        <ellipse cx="400" cy="400" rx="200" :ry="shadowEllipseHeight" id="winterNightEllipse"/>
+        <ellipse cx="400" cy="400" rx="200" :ry="Math.abs(shadowEllipseHeight)" id="winterNightEllipse"/>
         <path d="M200,400 a1,1 0 0,0 400,0" />
       </clipPath>
 
@@ -115,15 +122,14 @@
     
     <image width="400" height="400" x="200" y="200" xlink:href="./earth3.png" id="cartoonEarth" :transform="timeBasedRotation"/>
 
-    <g fill="rgba(255,255,255,0.0)" 
+    <g id="locationPins" fill="rgba(255,255,255,0.0)" 
     stroke-width="2" 
-    id="locationPins" 
     :transform="timeBasedRotation">
       <g v-for="(location,i) in locations" :key="i" :stroke="location.color" >
         <circle 
           :cx="latLongToX(location)"
           :cy="latLongToY(location)"
-          r="4" stroke-width="2"></circle>
+          r="5" stroke-width="3"></circle>
         <circle  cx="400" cy="400"  stroke-width="1" stroke-opacity="0.8" stroke-dasharray="5,5"
           :r="pinLoop(location)"
           v-show="settings.pinPathToggle"></circle>
@@ -136,7 +142,7 @@
         fill="url(#diagonalHatch)" 
         clip-path="url(#winter)" 
         id="winterNight" />
-      <rect width="300" height="300" x="5" y="5" 
+      <rect width="400" height="400" x="200" y="200" 
         v-else
         fill="url(#diagonalHatch)" 
         mask="url(#summer)" 
@@ -172,7 +178,22 @@
           <use xlink:href='#interval-l'/>
       </g>
     </g>
-  
+
+    <g v-show="settings.moonToggle">
+    <circle id="moon" 
+      cx="0" cy="0" r="55" 
+      fill="#777" 
+      :transform="moonScreenPos"></circle>
+    <path id="moonShadow" 
+      d="M-55,0 a1,1 0 0,0 110,0" 
+      fill="url(#diagonalHatch)"
+      :transform="moonShadowScreenPos"></path>
+    <path d="M0,-55 L0,55" 
+      stroke-width="2" stroke="black" stroke-opacity="0.8" stroke-dasharray="6,4"
+      :transform="moonVisibleLineScreenPos"></path>
+    </g>
+
+
   </svg>
 
   <br/>
@@ -185,104 +206,22 @@
 
 <script type="text/javascript">
 
-const planets = {
-  /*
-  a: semi-major axis
-  e: eccentricity
-  i: inclination
-  O: longitude of ascending node
-  p: longitude of perihelion
-  L: mean longitude
-  n: mean daily motion
-  */
-  Mercury:{
-    a: 0.38709893,
-    e: 0.20563069,
-    i: 7.00487,
-    O: 48.33167,
-    p: 77.45645,
-    L: 252.25084,
-    n: 4.092353,
-  },
-  Venus:{
-    a: 0.72333199,
-    e: 0.00677323,
-    i: 3.39471,
-    O: 76.68069,
-    p: 131.53298,
-    L: 181.97973,
-    n: 1.602158,
-  },
-  Earth:{
-    a: 1.00000011,
-    e: 0.01671022,
-    i: 0.00005,
-    O: -11.26064,
-    p: 102.94719,
-    L: 100.46435,
-    n: 0.9855796,
-  },
-  Mars:{
-    a: 1.52366231,
-    e: 0.09341233,
-    i: 1.85061,
-    O: 49.57854,
-    p: 336.04084,
-    L: 355.45332,
-    n: 0.5240613,
-  },
-  Jupiter:{
-    a: 5.20336301,
-    e: 0.04839266,
-    i: 1.30530,
-    O: 100.55615,
-    p: 14.75385,
-    L: 34.40438,
-    n: 0.008309618,
-  },
-  Saturn:{
-    a: 9.53707032,
-    e: 0.05415060,
-    i: 2.48446,
-    e: 113.71504,
-    O: 92.43194,
-    p: 49.94432,
-    n: 0.03328656,
-  },
-}
-
-  const msPerDay = (1000 * 60 * 60 * 24);
-  const toRad = (180 / Math.PI); 
-  function mod(n, m) {
-    return ((n % m) + m) % m;
-  }
-  function sin(n){
-    return Math.sin(n*toRad);
-  }
-  function cos(n){
-    return Math.cos(n*toRad);
-  }
-
   var app = new Vue({
     el: '#root',
     data(){
-      const d = new Date();//new Date('6 20, 2000 12:00:0000 GMT+00:00');
+      const d = new Date();//new Date('3 21, 2018 00:00:0000 GMT+00:00'); //new Date();//
       return {
-        //exactDay: new Date(),
         exactDay: d,
-        currYear: d.getFullYear(),
-        J2000: 946728000000, //UTC time of 2000-01-01 12:00:00 GMT+00:00
         stableQuarterDay: this.findQuarterDay(d),
-        degPerRadian: (180 / Math.PI),
-        earthRadiusPx: 150,
+        earthRadiusPx: 200,
         locations: {},
         timer: undefined,
-        viewBoxString: '150 150 500 500',
         informationIsVisible: false,
         settingsIsVisible: false,
         settings:{
           clockToggle: true,
           pinPathToggle: false,
+          moonToggle: true,
         },
         newLocation:{
           name: '',
@@ -292,10 +231,13 @@ const planets = {
       }
     },
     mounted(){
-      if(localStorage.getItem('cities') !== null){
-        this.locations = JSON.parse(localStorage.getItem('cities'))
+      if(localStorage.getItem('clock_cities') !== null){
+        this.locations = JSON.parse(localStorage.getItem('clock_cities'))
       }else{
         this.updateLocal();
+      }
+      if(localStorage.getItem('clock_settings') !== null){
+        this.settings = JSON.parse(localStorage.getItem('clock_settings'))
       }
       this.timer = setInterval( () => {
         this.exactDay = new Date();
@@ -304,87 +246,88 @@ const planets = {
     watch:{
       exactDay(newDay, oldDay){
         let d = this.findQuarterDay(newDay);
-        if(this.stableQuarterDay != d) this.stableQuarterDay = Number(d);
+        if(this.stableQuarterDay !== d) this.stableQuarterDay = d;
       },
     },
     computed:{
-      earthAnomoly(){
-        console.log('reran earthAnomoly');
-        return this.findHeliocentricAnomoly(planets.Earth, this.stableQuarterDay);
+      solarEarth(){
+        let sEarth = sunBasedPosition(earth, this.stableQuarterDay);
+        let sun = {x:0,y:0,z:0};
+        sEarth.ra = earthBasedPosition(sun, sEarth).ra;
+        return sEarth;
       },
       dayBasedRotation(){
-        console.log('reran dayBasedRotation', (-90-this.earthAnomoly).toFixed(2));
-        return `rotate(${(-90-this.earthAnomoly).toFixed(2)} 400 400)`;
+        return `rotate(${-270-this.solarEarth.ra} 400 400)`;
       },
       timeBasedRotation(){
-        let partialDayHrs = mod( (this.exactDay.getTime() - this.J2000)/(1000*60*60), 24);
-        let earthRot =  mod(-270 - this.earthAnomoly - (partialDayHrs*15), 360);
-        console.log('reran timeBasedRotation', earthRot);
-        return `rotate(${earthRot} 400 400)`
+        let partialDayHrs = mod( (this.exactDay.getTime() - J2000ms)/(1000*60*60), 24);
+        let earthRot =  mod(-90 - this.solarEarth.ra - (partialDayHrs*15), 360);
+        return `rotate(${earthRot} 400 400)`;
       },
       shadowEllipseHeight(){
-        var start = new Date(this.currYear, 0, 0);
-        var diff = this.stableQuarterDay - (start/msPerDay);
-        var day = Math.floor(diff);
-        //console.log('day of year', day);
-        //day 1 is Vernal Equinox
-        console.log('reran shadowEllipseHeight', this.earthRadiusPx * 0.235 * -Math.sin( (day-79) * (Math.PI/180) ));
-        return this.earthRadiusPx * 0.235 * -Math.sin( (day-79) * (Math.PI/180) );
-      }
+        var dayOfYear = this.stableQuarterDay - this.findQuarterDay(new Date(this.exactDay.getFullYear(), 0, 0));
+        console.log('season thing', -cos( this.solarEarth.ra ));
+        return this.earthRadiusPx * 0.235 * -sin( this.solarEarth.ra );
+      },
+      geoCentricMoon(){
+        var moon = moonPosition(this.stableQuarterDay);
+        moon.screenX = 400 + 345 * cos(-moon.ra);
+        moon.screenY = 400 + 345 * sin(-moon.ra);
+        return moon;
+      },
+      moonScreenPos(){
+        return `translate(${this.geoCentricMoon.screenX}, ${this.geoCentricMoon.screenY})`
+      },
+      moonShadowScreenPos(){
+        return `translate(${this.geoCentricMoon.screenX}, ${this.geoCentricMoon.screenY}), rotate(${-270-this.solarEarth.ra} 0 0)`;
+      },
+      moonVisibleLineScreenPos(){
+        return `translate(${this.geoCentricMoon.screenX}, ${this.geoCentricMoon.screenY}), rotate(${(360-this.geoCentricMoon.ra)})`;
+      },
+      viewBoxString(){
+        if(this.settings.moonToggle){
+          let x = (Math.min(200, this.geoCentricMoon.screenX-55) + Math.max(600, this.geoCentricMoon.screenX+55))/2 - 300;
+          let y = (Math.min(200, this.geoCentricMoon.screenY-55) + Math.max(600, this.geoCentricMoon.screenY+55))/2 - 300;
+          return `${x} ${y} 600 600`;
+        }
+        return '175 175 450 450';
+      },
     },
     methods:{
       findQuarterDay(d){
-        let dayNum = d.getTime() / msPerDay;
-        //console.log('reran quarterDay', (Math.round(dayNum * 4) / 4).toFixed(2));
-        var quarter =  (Math.round(dayNum * 4) / 4).toFixed(2);
-        console.log('quarter', quarter);
-        return Number(quarter);
-        //if(this.stableQuarterDay != quarter) this.stableQuarterDay = Number(quarter);
-      },
-      findHeliocentricAnomoly(body, qDay){
-        let dayDiff = qDay - (this.J2000 / msPerDay);
-        
-        var meanAnomoly = mod( (body.n * dayDiff + body.L - body.p), 360);
-        //console.log('mean anomoly', meanAnomoly);
-
-        var trueAnomoly = meanAnomoly + this.degPerRadian * (
-          ((2 * body.e - Math.pow(body.e, 3)/4) * sin(meanAnomoly)) +
-          (5/4 * Math.pow(body.e, 2) * sin(2*meanAnomoly)) +
-          (13/12 * Math.pow(body.e, 3) * sin(3*meanAnomoly))
-        );
-        //console.log('true anomoly', trueAnomoly);
-        return trueAnomoly;
+        return +((Math.round(d.getTime() / msPerDay * 4)/4).toFixed(2)) - J2000dy;
       },
       latLongToX(location){
         let theta = (90-location.long) * Math.PI / 180;
-        let radius = 200 * (1 - (location.lat/90));
+        let radius = 192 * (1 - (location.lat/90));
         return 400 + radius * Math.cos(theta);
       },
       latLongToY(location){
         let theta = (90-location.long) * Math.PI / 180;
-        let radius = 200 * (1 - (location.lat/90));
+        let radius = 192 * (1 - (location.lat/90));
         return 400 + radius * Math.sin(theta);
       },
       updateLocal(){
         navigator.geolocation.getCurrentPosition( pos => {
-          console.log(pos);
+          console.log('geolocation of user:', pos);
           this.$set(this.locations, 'local', {
             lat: pos.coords.latitude,
             long: pos.coords.longitude,
             color: 'magenta',
           });
-          localStorage.setItem('cities', JSON.stringify(this.locations));
+          localStorage.setItem('clock_cities', JSON.stringify(this.locations));
         });
       },
       pinLoop(location){
-        return 200 * (1 - (location.lat/90));
+        return 192 * (1 - (location.lat/90));
       },
       toggleInformation(){
         this.informationIsVisible = !this.informationIsVisible;
       },
       toggleSettings(){
         this.settingsIsVisible = !this.settingsIsVisible;
-        localStorage.setItem('cities', JSON.stringify(this.locations));
+        localStorage.setItem('clock_cities', JSON.stringify(this.locations));
+        localStorage.setItem('clock_settings', JSON.stringify(this.settings));
       },
       addLocation(){
         let coordPeices = this.newLocation.coord.match(/([0-9.]*)° ([NS]), ([0-9.]*)° ([EW])/);
@@ -402,17 +345,16 @@ const planets = {
             color: this.newLocation.color || 'red',
           });
         }
-        localStorage.setItem('cities', JSON.stringify(this.locations));
+        localStorage.setItem('clock_cities', JSON.stringify(this.locations));
         this.newLocation = {name: '',coord: '',color: ''};
       },
       deleteLocation(key){
         this.$delete(this.locations, key);
-        localStorage.setItem('cities', JSON.stringify(this.locations));
+        localStorage.setItem('clock_cities', JSON.stringify(this.locations));
       }
     }
   });
 
-  
 </script>
 </body>
 </html>
