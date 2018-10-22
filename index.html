@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" /> 
   <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
   <style>
     body{
@@ -21,6 +22,10 @@
       background-color: #333;
       color: #aaa;
       border: thin solid #222;
+      padding: 3px 2px;
+    }
+    .red-bg{
+      background-color:#411;
     }
   </style>
   <script src="./commons.js"></script>
@@ -28,22 +33,30 @@
 <body>
   <div id="root">
 
-    <div style="position:fixed">
+    <div style="position:fixed; width:100%;">
       <button class="btn" @click="toggleInformation">
-          information
-        </button>
-        <button class="btn" @click="toggleSettings">
-          Settings
+        information
       </button>
-      <div v-if="extraIsVisible == 'information'" style="background-color:rgba(0,0,0,0.85); padding:20px 50px; color:grey"> 
+      <button class="btn" @click="moveTime(-6)">
+        -6h
+      </button>
+      <button class="btn" @click="nowTime" v-show="!timer">
+        now
+      </button>
+      <button class="btn" @click="moveTime(6)">
+        +6h
+      </button>
+      <button class="btn" @click="toggleSettings">
+        Settings
+      </button>
+      <div v-if="extraIsVisible == 'information'" style="background-color:rgba(0,0,0,0.85); padding:20px 5px; color:grey"> 
         <h3>General Information</h3>
         <p><strong>Basiclly this is a clock. It's real time, and slow moving.</strong> Would work great as a background, new tab, maybe a device face.</p>
-        <p><strong>Has geolocation</strong>: you should have a magenta dot for where you are at, more on that later.</p>
-        <p><strong>It tells the time of the day.</strong> Your dot, like your location, will experience sunrise and sunset, as it moves through the day.</p>
-        <p><strong>Tells the day of the year.</strong> On January first the sun is directly to the left of the screen, and moves around the 'sun' counterclockwise.</p>
-        <p>Find the triangle that represents dawn at the equator (moving from dark to light). The Earth spins while moving in that direction.</p>
-        <p><strong>The shadow changes shape</strong>, in the winter the Earth moves a bit north making more hours there night. The shape of that shadow should be pretty accurate, depending of if I got the right projection.</p>
-        <p>There isn't a direct day/night switch, but thought drawing a twilight region would add complexity and still be a guess. However, the size of your location dot is about how much of the sky you can see (ish). When your dot reaches a boundary, daylight will change, when the dot finishes the transition, the daylight will too.</p>
+        <p><strong>Has geolocation</strong>: you should have a magenta dot for where you are.</p>
+        <p><strong>It tells the time of the day.</strong> your location on a spinning globe.</p>
+        <p><strong>Tells the day of the year.</strong> direction globe is illuminated.</p>
+        <p><strong>The shadow changes shape</strong>, in the winter the arctic never gets the daylight, in the summer the artic never gets nighttime.</p>
+        <p>Instead of drawing a twilight area, the size of your dot is about how much sky you can see. It takes that long for dawn/dusk.</p>
         <dl>
           <dt>These planets are the ones you can see without a telesscope:</dt>
           <dd>☿ Mercury</dd>
@@ -62,7 +75,7 @@
           <dd>Yes, my math could be better, objects could be up a degree or two off (depending on day of year), but these erros should be small until beyond 2050.</dd>
         </dl>
       </div>
-      <div v-if="extraIsVisible == 'settings'" style="background-color:rgba(0,0,0,0.85); padding: 20px 50px; color:grey;">
+      <div v-if="extraIsVisible == 'settings'" style="background-color:rgba(0,0,0,0.85); padding: 20px 5px; color:grey;">
         <div>
           <label>
             <input type="checkbox" v-model="settings.moonToggle">
@@ -87,26 +100,24 @@
               <span>Show planets</span>
             </label>
           </div>
-        <div style="display: grid; grid-template-columns: repeat(5, 100px);">
-            <div v-for="(location,key) in locations" :key="key"
-              style="display: contents">
-              <span>{{key}}</span>
-              <input v-model="location.lat" />
-              <input v-model="location.long" />
-              <input v-model="location.color" />
-              <span>
-                <button class="btn" @click="deleteLocation(key)">&cross;</button>
-              </span>
-            </div>
-            <div style="display:contents">
-              <input placeholder="name" v-model="newLocation.name" />
-              <input placeholder="coordinates from google" v-model="newLocation.coord" style="grid-column:2/4"/>
-              <input placeholder="color" v-model="newLocation.color" />
-              <span>
-                  <button class="btn" @click="addLocation">Add</button>
-              </span>
-            </div>
-        </div>
+        <dl v-for="(location,key) in locations" :key="key">
+          <dt>
+            <span>{{key}}</span>
+            <button :class="['btn', locationToDelete==key && 'red-bg']" @click="deleteLocation(key)" >&cross;</button>
+          </dt>
+          <dd><input v-model="location.lat" /></dd>
+          <dd><input v-model="location.long" /></dd>
+          <dd><input v-model="location.color" /></dd>
+        </dl>
+        <dl>
+          <dt>
+            <input placeholder="name" v-model="newLocation.name" />
+            <button class="btn" @click="addLocation">Add</button>
+          </dt>
+          <dd><input placeholder="coordinates from google" v-model="newLocation.coord" /></dd>
+          <dd><input placeholder="color" v-model="newLocation.color" /></dd>
+        </dl>
+        <button class="btn" @click="saveLocalPin">local pin</button>
       </div>
       
   </div>
@@ -216,13 +227,7 @@
 
 
   </svg>
-
-  <br/>
-  <button class="btn" @click="updateLocal">
-    local pin
-  </button>
-
-  </div>
+</div>
 
 
 <script type="text/javascript">
@@ -248,7 +253,9 @@
           name: '',
           coord: '',
           color: '',
-        }
+        },
+        locationToDelete: null,
+        locationToDeleteTimer: null,
       }
     },
     mounted(){
@@ -286,7 +293,8 @@
         return `rotate(${earthRot} 400 400)`;
       },
       shadowEllipseHeight(){
-        var dayOfYear = this.stableQuarterDay - this.findQuarterDay(new Date(this.exactDay.getFullYear(), 0, 0));
+        //var dayOfYear = this.stableQuarterDay - this.findQuarterDay(new Date(this.exactDay.getFullYear(), 0, 0));
+        //console.log('season thing', -cos( this.solarEarth.ra ));
         return this.earthRadiusPx * 0.235 * -sin( this.solarEarth.ra );
       },
       geoCentricMoon(){
@@ -343,7 +351,10 @@
         let radius = 192 * (1 - (location.lat/90));
         return 400 + radius * Math.sin(theta);
       },
-      updateLocal(){
+      pinLoop(location){
+        return 192 * (1 - (location.lat/90));
+      },
+      saveLocalPin(){
         navigator.geolocation.getCurrentPosition( pos => {
           console.log('geolocation of user:', pos);
           this.$set(this.locations, 'local', {
@@ -353,9 +364,6 @@
           });
           localStorage.setItem('clock_cities', JSON.stringify(this.locations));
         });
-      },
-      pinLoop(location){
-        return 192 * (1 - (location.lat/90));
       },
       toggleInformation(){
         if(this.extraIsVisible !== 'information') this.extraIsVisible = 'information';
@@ -389,6 +397,34 @@
       deleteLocation(key){
         this.$delete(this.locations, key);
         localStorage.setItem('clock_cities', JSON.stringify(this.locations));
+      },
+      moveTime(hours){
+        if(this.timer){
+          clearInterval(this.timer);
+          this.timer = undefined;
+        }
+        let d = new Date();
+        d.setTime(this.exactDay.getTime() + (hours*60*60*1000));
+        this.exactDay = d;
+      },
+      nowTime(){
+        this.exactDay = new Date();
+        this.timer = setInterval( () => {
+          this.exactDay = new Date();
+        }, 20*1000);
+      },
+      deleteLocation(key){
+        clearTimeout(this.locationToDeleteTimer);
+        if(this.locationToDelete == key){
+          this.$delete(this.locations, key);
+          localStorage.setItem('clock_cities', JSON.stringify(this.locations));
+          this.locationToDelete = null;
+          return;
+        }
+        this.locationToDelete = key;
+        this.locationToDeleteTimer = setTimeout(()=>{
+          this.locationToDelete = null;
+        }, 800);
       }
     }
   });
