@@ -231,7 +231,7 @@
 
 
 <script type="text/javascript">
-
+  window.onfocus = () => app.$set('exactDay', new Date());
   var app = new Vue({
     el: '#root',
     data(){
@@ -262,7 +262,7 @@
       if(localStorage.getItem('clock_cities') !== null){
         this.locations = JSON.parse(localStorage.getItem('clock_cities'))
       }else{
-        this.updateLocal();
+        this.saveLocalPin();
       }
       if(localStorage.getItem('clock_settings') !== null){
         this.settings = JSON.parse(localStorage.getItem('clock_settings'))
@@ -298,7 +298,7 @@
         return this.earthRadiusPx * 0.235 * -sin( this.solarEarth.ra );
       },
       geoCentricMoon(){
-        var moon = moonPosition(this.stableQuarterDay);
+        var moon = moonPosition(this.exactDay.getTime()/msPerDay - J2000dy);
         moon.screenX = 400 + 345 * cos(-moon.ra);
         moon.screenY = 400 + 345 * sin(-moon.ra);
         return moon;
