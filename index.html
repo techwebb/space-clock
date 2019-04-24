@@ -231,7 +231,7 @@
 
 
 <script type="text/javascript">
-  window.onfocus = () => app.$set('exactDay', new Date());
+  window.onfocus = () => app.wakeup();
   var app = new Vue({
     el: '#root',
     data(){
@@ -335,6 +335,13 @@
       },
     },
     methods:{
+      wakeup(){
+        this.exactDay = new Date();
+        clearInterval(this.timer);
+        this.timer = setInterval( () => {
+          this.exactDay = new Date();
+        }, 20*1000);
+      },
       findQuarterDay(d){
         return +((Math.round(d.getTime() / msPerDay * 4)/4).toFixed(2)) - J2000dy;
       },
